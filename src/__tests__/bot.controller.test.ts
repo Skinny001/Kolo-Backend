@@ -38,3 +38,8 @@ describe('BotController', () => {
     let botController: BotController;
     let mockReq: Partial<Request>;
     let mockRes: Partial<Response>;
+    beforeEach(() => {
+        jest.clearAllMocks();
+        botController = new BotController();
+        mockRes = { sendStatus: jest.fn(), status: jest.fn().mockReturnThis(), send: jest.fn() };
+    });
