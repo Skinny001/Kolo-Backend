@@ -43,3 +43,7 @@ describe('BotController', () => {
         botController = new BotController();
         mockRes = { sendStatus: jest.fn(), status: jest.fn().mockReturnThis(), send: jest.fn() };
     });
+    const createWebhookPayload = (text: string) => ({
+        object: 'whatsapp_business_account',
+        entry: [{ changes: [{ value: { metadata: { phone_number_id: '123' }, messages: [{ from: '12345', text: { body: text } }] } }] }]
+    });
