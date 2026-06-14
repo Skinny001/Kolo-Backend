@@ -34,3 +34,7 @@ jest.mock('../services/group.service', () => ({
 jest.mock('../config/env', () => ({
     config: { VERIFY_TOKEN: 'test_token' }
 }));
+describe('BotController', () => {
+    let botController: BotController;
+    let mockReq: Partial<Request>;
+    let mockRes: Partial<Response>;
