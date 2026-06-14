@@ -31,3 +31,6 @@ jest.mock('../services/group.service', () => ({
         addContribution: jest.fn().mockResolvedValue({ id: 'c1' })
     }))
 }));
+jest.mock('../config/env', () => ({
+    config: { VERIFY_TOKEN: 'test_token' }
+}));
