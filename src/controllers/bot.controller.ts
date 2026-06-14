@@ -1,10 +1,12 @@
 import type { Request, Response } from 'express';
 import { WhatsAppService } from '../services/whatsapp.service';
 import { StellarService } from '../services/stellar.service';
+import { UserService } from '../services/user.service';
 import { config } from '../config/env';
 
 const whatsappService = new WhatsAppService();
 const stellarService = new StellarService();
+const userService = new UserService();
 
 export class BotController {
     public verifyWebhook(req: Request, res: Response) {
@@ -41,7 +43,11 @@ export class BotController {
 
                 if (msgBody) {
                     console.log(`Received message from ${from}: ${msgBody}`);
-                    await this.processCommand(from, msgBody);
+                    
+                    // Auto-register user
+                    const user = await userService.getOrCreateUser(from);
+
+                    await this.processCommand(from, msgBody, user);
                 }
             }
             res.sendStatus(200);
@@ -50,7 +56,7 @@ export class BotController {
         }
     }
 
-    private async processCommand(from: string, text: string) {
+    private async processCommand(from: string, text: string, user: any) {
         const tokens = text.trim().split(/\s+/);
         if (tokens.length === 0) return;
 
@@ -100,7 +106,13 @@ export class BotController {
     // --- COMMAND HANDLERS ---
 
     private async handleBalance(from: string) {
-        await whatsappService.sendMessage(from, `[BALANCE] Checking balance for ${from}...`);
+        const user = await userService.getOrCreateUser(from);
+        if (!user.stellarWallet) {
+            return await whatsappService.sendMessage(from, `[BALANCE] Error: Wallet not configured.`);
+        }
+        const publicKey = user.stellarWallet.split(':')[0];
+        const balance = await stellarService.checkBalance(publicKey);
+        await whatsappService.sendMessage(from, `[BALANCE] Your balance is ${balance} XLM.`);
     }
 
     private async handleHistory(from: string) {
@@ -108,7 +120,14 @@ export class BotController {
     }
 
     private async handleProfile(from: string) {
-        await whatsappService.sendMessage(from, `[PROFILE] Fetching profile for ${from}...`);
+        const user = await userService.getOrCreateUser(from);
+        const publicKey = user.stellarWallet ? user.stellarWallet.split(':')[0] : 'None';
+        const profileInfo = `*Kolo Profile*\n` +
+            `Phone: ${user.phoneNumber}\n` +
+            `Username: ${user.username || 'Not set'}\n` +
+            `Wallet: ${publicKey}\n` +
+            `Joined: ${user.createdAt.toDateString()}`;
+        await whatsappService.sendMessage(from, profileInfo);
     }
 
     private async handleSend(from: string, args: string[]) {
