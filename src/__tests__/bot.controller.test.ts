@@ -69,3 +69,8 @@ describe('BotController', () => {
             await botController.handleMessage(mockReq as Request, mockRes as Response);
             expect(mockRes.sendStatus).toHaveBeenCalledWith(200);
         });
+        it('should handle SEND command', async () => {
+            mockReq = { body: createWebhookPayload('SEND 10 @jane') };
+            await botController.handleMessage(mockReq as Request, mockRes as Response);
+            expect(mockRes.sendStatus).toHaveBeenCalledWith(200);
+        });
