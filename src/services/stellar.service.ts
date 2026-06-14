@@ -2,13 +2,13 @@ import * as StellarSdk from '@stellar/stellar-sdk';
 import { config } from '../config/env';
 
 export class StellarService {
-    private server: StellarSdk.Server;
+    private server: StellarSdk.Horizon.Server;
 
     constructor() {
         if (config.STELLAR_NETWORK === 'PUBLIC') {
-            this.server = new StellarSdk.Server('https://horizon.stellar.org');
+            this.server = new StellarSdk.Horizon.Server('https://horizon.stellar.org');
         } else {
-            this.server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+            this.server = new StellarSdk.Horizon.Server('https://horizon-testnet.stellar.org');
         }
     }
 
