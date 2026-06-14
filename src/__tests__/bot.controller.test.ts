@@ -5,3 +5,9 @@ jest.mock('../services/whatsapp.service', () => ({
         sendMessage: jest.fn().mockResolvedValue(true)
     }))
 }));
+jest.mock('../services/stellar.service', () => ({
+    StellarService: jest.fn().mockImplementation(() => ({
+        checkBalance: jest.fn().mockResolvedValue('100.50'),
+        sendPayment: jest.fn().mockResolvedValue({ successful: true, hash: 'tx123' })
+    }))
+}));
