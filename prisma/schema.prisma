@@ -10,6 +10,7 @@ generator client {
 model User {
   id              String         @id @default(uuid())
   phoneNumber     String         @unique
+  username        String?        @unique
   stellarWallet   String?        @unique
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
