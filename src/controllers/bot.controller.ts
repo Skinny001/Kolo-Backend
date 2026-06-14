@@ -262,16 +262,47 @@ export class BotController {
         if (args.length < 1) {
             return await whatsappService.sendMessage(from, 'Usage: CONTRIBUTE <amount>');
         }
-        const amount = args[0];
-        await whatsappService.sendMessage(from, `[CONTRIBUTE] Contributing ${amount} USDC to your group...`);
+        const amountStr = args[0];
+        const amount = parseFloat(amountStr);
+        const user = await userService.getOrCreateUser(from);
+
+        const memberships = await groupService.getGroupStatus(user.id);
+        if (memberships.length === 0) {
+            return await whatsappService.sendMessage(from, 'Error: You are not part of any group.');
+        }
+
+        // For MVP, contribute to the first group
+        const group = memberships[0].group;
+
+        try {
+            await whatsappService.sendMessage(from, `[CONTRIBUTE] Initiating contribution of ${amount} XLM to "${group.name}"...`);
+            
+            // Mock transaction hash (since Soroban contracts are not yet deployed)
+            const txHash = 'mock_tx_' + Date.now();
+            await groupService.addContribution(user.id, group.id, amount, txHash);
+            
+            await whatsappService.sendMessage(from, `✅ Successfully contributed ${amount} XLM to "${group.name}"!`);
+        } catch (e: any) {
+            await whatsappService.sendMessage(from, `❌ Contribution failed: ${e.message}`);
+        }
     }
 
     private async handleWithdraw(from: string, args: string[]) {
         if (args.length < 1) {
             return await whatsappService.sendMessage(from, 'Usage: WITHDRAW <amount>');
         }
-        const amount = args[0];
-        await whatsappService.sendMessage(from, `[WITHDRAW] Withdrawing ${amount} USDC...`);
+        const amount = parseFloat(args[0]);
+        const user = await userService.getOrCreateUser(from);
+
+        const memberships = await groupService.getGroupStatus(user.id);
+        if (memberships.length === 0) {
+            return await whatsappService.sendMessage(from, 'Error: You are not part of any group.');
+        }
+
+        const group = memberships[0].group;
+
+        // Mock withdraw logic (would call Soroban contract)
+        await whatsappService.sendMessage(from, `✅ Successfully withdrew ${amount} XLM from "${group.name}" pool! (MOCKED)`);
     }
 
     private async handleHelp(from: string) {
