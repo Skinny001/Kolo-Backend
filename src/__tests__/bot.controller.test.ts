@@ -52,3 +52,5 @@ describe('BotController', () => {
             mockReq = {
                 query: { 'hub.mode': 'subscribe', 'hub.verify_token': 'test_token', 'hub.challenge': '12345_challenge' }
             };
+            process.env.VERIFY_TOKEN = 'test_token';
+            botController.verifyWebhook(mockReq as Request, mockRes as Response);
