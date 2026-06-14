@@ -1,20 +1,20 @@
 {
-  "name": "whatsapp-chatgpt",
+  "name": "kolo-backend",
   "version": "1.0.0",
-  "description": "**Name:** Kolo",
+  "description": "Kolo bot",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/harshitethic/whatsapp-chatgpt.git"
+    "url": "git+https://github.com/Kolo-Org/Kolo-Backend.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "homepage": "https://github.com/Kolo-Org/Kolo-Backend#readme",
   "type": "commonjs",
-  "homepage": "https://github.com/harshitethic/whatsapp-chatgpt#readme",
   "dependencies": {
     "@prisma/client": "^5.11.0",
     "@stellar/stellar-sdk": "^15.1.0",

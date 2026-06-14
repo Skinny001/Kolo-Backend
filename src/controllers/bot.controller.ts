@@ -2,11 +2,13 @@ import type { Request, Response } from 'express';
 import { WhatsAppService } from '../services/whatsapp.service';
 import { StellarService } from '../services/stellar.service';
 import { UserService } from '../services/user.service';
+import { GroupService } from '../services/group.service';
 import { config } from '../config/env';
 
 const whatsappService = new WhatsAppService();
 const stellarService = new StellarService();
 const userService = new UserService();
+const groupService = new GroupService();
 
 export class BotController {
     public verifyWebhook(req: Request, res: Response) {
@@ -183,10 +185,19 @@ export class BotController {
         if (args.length < 3) {
             return await whatsappService.sendMessage(from, 'Usage: CREATE GROUP <name> <amount> <frequency>');
         }
-        const frequency = args.pop();
-        const amount = args.pop();
+        const frequency = args.pop() || 'MONTHLY';
+        const amountStr = args.pop() || '0';
         const name = args.join(' ');
-        await whatsappService.sendMessage(from, `[CREATE GROUP] Creating group "${name}" with ${amount} USDC ${frequency}...`);
+        const amount = parseFloat(amountStr);
+
+        const user = await userService.getOrCreateUser(from);
+        
+        try {
+            const group = await groupService.createGroup(user.id, name, amount, frequency);
+            await whatsappService.sendMessage(from, `✅ Group "${name}" created!\nGroup ID: ${group.id}`);
+        } catch (e: any) {
+            await whatsappService.sendMessage(from, `❌ Failed to create group: ${e.message}`);
+        }
     }
 
     private async handleJoinGroup(from: string, args: string[]) {
@@ -194,7 +205,14 @@ export class BotController {
             return await whatsappService.sendMessage(from, 'Usage: JOIN GROUP <groupId>');
         }
         const groupId = args[0];
-        await whatsappService.sendMessage(from, `[JOIN GROUP] Joining group ${groupId}...`);
+        const user = await userService.getOrCreateUser(from);
+
+        try {
+            await groupService.joinGroup(user.id, groupId);
+            await whatsappService.sendMessage(from, `✅ Successfully joined group!`);
+        } catch (e: any) {
+            await whatsappService.sendMessage(from, `❌ Failed to join group: ${e.message}`);
+        }
     }
 
     private async handleInviteMember(from: string, args: string[]) {
@@ -202,11 +220,42 @@ export class BotController {
             return await whatsappService.sendMessage(from, 'Usage: INVITE MEMBER <@username or phone>');
         }
         const target = args[0];
-        await whatsappService.sendMessage(from, `[INVITE MEMBER] Inviting ${target} to your group...`);
+        const user = await userService.getOrCreateUser(from);
+        const recipient = await userService.resolveUser(target);
+
+        if (!recipient) {
+            return await whatsappService.sendMessage(from, `Error: Could not find user ${target}.`);
+        }
+
+        const memberships = await groupService.getGroupStatus(user.id);
+        const adminGroup = memberships.find((m: any) => m.role === 'CREATOR');
+        
+        if (!adminGroup) {
+            return await whatsappService.sendMessage(from, 'Error: You are not the creator of any group.');
+        }
+
+        const senderHandle = user.username ? '@' + user.username : user.phoneNumber;
+        await whatsappService.sendMessage(recipient.phoneNumber, `🔔 [INVITE] ${senderHandle} invited you to join their savings group "${adminGroup.group.name}".\n\nReply with: JOIN GROUP ${adminGroup.groupId}`);
+        await whatsappService.sendMessage(from, `✅ Invite sent to ${target}.`);
     }
 
     private async handleGroupStatus(from: string, args: string[]) {
-        await whatsappService.sendMessage(from, `[GROUP STATUS] Fetching group status...`);
+        const user = await userService.getOrCreateUser(from);
+        const memberships = await groupService.getGroupStatus(user.id);
+        
+        if (memberships.length === 0) {
+            return await whatsappService.sendMessage(from, 'You are not part of any groups.');
+        }
+
+        let statusText = '*Your Groups:*\n\n';
+        memberships.forEach((m: any) => {
+            statusText += `*${m.group.name}*\n`;
+            statusText += `Target: ${m.group.contributionAmount} XLM (${m.group.contributionFrequency})\n`;
+            statusText += `Role: ${m.role}\n`;
+            statusText += `Members: ${m.group.members.length}\n\n`;
+        });
+
+        await whatsappService.sendMessage(from, statusText.trim());
     }
 
     private async handleContribute(from: string, args: string[]) {
