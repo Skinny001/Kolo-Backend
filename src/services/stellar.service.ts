@@ -20,6 +20,19 @@ export class StellarService {
         };
     }
 
+    public async fundTestnetAccount(publicKey: string): Promise<void> {
+        if (config.STELLAR_NETWORK === 'TESTNET') {
+            try {
+                // Using axios for friendbot request since node-fetch is not installed
+                const axios = require('axios');
+                await axios.get(`https://friendbot.stellar.org?addr=${encodeURIComponent(publicKey)}`);
+                console.log(`Friendbot successfully funded ${publicKey}`);
+            } catch (e) {
+                console.error("Friendbot funding failed:", e);
+            }
+        }
+    }
+
     public async checkBalance(publicKey: string): Promise<string> {
         try {
             const account = await this.server.loadAccount(publicKey);
