@@ -45,7 +45,7 @@ jest.mock('@stellar/stellar-sdk', () => {
 });
 
 jest.mock('axios', () => ({
-    get: jest.fn().mockResolvedValue({ data: { successful: true } })
+    get: jest.fn().mockResolvedValue({ status: 200, data: { successful: true } })
 }));
 
 describe('StellarService', () => {
@@ -83,6 +83,12 @@ describe('StellarService', () => {
             const axios = require('axios');
             await stellarService.fundTestnetAccount('G_MOCK');
             expect(axios.get).toHaveBeenCalledWith('https://friendbot.stellar.org?addr=G_MOCK');
+        });
+
+        it('should throw on non-200 response', async () => {
+            const axios = require('axios');
+            axios.get.mockResolvedValueOnce({ status: 500 });
+            await expect(stellarService.fundTestnetAccount('G_MOCK')).rejects.toThrow('Friendbot funding failed');
         });
     });
 

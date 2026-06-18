@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../src/lib/prisma';
 import { encrypt } from '../src/utils/encryption.util';
-
-const prisma = new PrismaClient();
 
 async function main() {
     console.log('Starting wallet encryption migration...');
@@ -28,7 +26,7 @@ async function main() {
             
             try {
                 const { encryptedText, iv, authTag } = encrypt(secretKey);
-                const newWalletData = `${publicKey}:${encryptedText}:${iv}:${authTag}`;
+                const newWalletData = JSON.stringify({ publicKey, encryptedSecret: encryptedText, iv, authTag });
                 
                 await prisma.user.update({
                     where: { id: user.id },

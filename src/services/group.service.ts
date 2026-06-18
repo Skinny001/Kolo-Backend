@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 export class GroupService {
     public async createGroup(userId: string, name: string, amount: number, frequency: string) {
