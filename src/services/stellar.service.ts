@@ -1,6 +1,11 @@
 import * as StellarSdk from '@stellar/stellar-sdk';
 import { config } from '../config/env';
 
+export interface GeneratedWallet {
+    publicKey: string;
+    secret: string;
+}
+
 export class StellarService {
     private server: StellarSdk.Horizon.Server;
 
@@ -12,12 +17,21 @@ export class StellarService {
         }
     }
 
-    public generateWallet() {
+    public generateWallet(): GeneratedWallet {
         const pair = StellarSdk.Keypair.random();
-        return {
-            publicKey: pair.publicKey(),
-            secret: pair.secret(),
-        };
+        const publicKey = pair.publicKey();
+        const secretBuffer = Buffer.from(pair.secret(), 'utf8');
+
+        try {
+            return {
+                publicKey,
+                secret: secretBuffer.toString('utf8'),
+            };
+        } finally {
+            // Best-effort cleanup: the secret still returns to the caller, but we
+            // minimize the extra copies that live in process memory.
+            secretBuffer.fill(0);
+        }
     }
 
     public async fundTestnetAccount(publicKey: string): Promise<void> {

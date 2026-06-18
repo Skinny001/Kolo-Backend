@@ -12,15 +12,15 @@ export class UserService {
 
         if (!user) {
             // Generate Stellar wallet
-            const wallet = stellarService.generateWallet();
+            const { publicKey, secret } = stellarService.generateWallet();
             
             // Fund wallet with Friendbot asynchronously
-            stellarService.fundTestnetAccount(wallet.publicKey).catch(err => {
+            stellarService.fundTestnetAccount(publicKey).catch(err => {
                 console.error('Failed to fund testnet account:', err);
             });
 
             // Store publicKey:secret in the stellarWallet field for this custodial MVP
-            const walletData = `${wallet.publicKey}:${wallet.secret}`;
+            const walletData = `${publicKey}:${secret}`;
 
             user = await prisma.user.create({
                 data: {
@@ -28,7 +28,7 @@ export class UserService {
                     stellarWallet: walletData
                 }
             });
-            console.log(`Created new user for ${phoneNumber} with wallet ${wallet.publicKey}`);
+            console.log(`Created new user for ${phoneNumber} with wallet ${publicKey}`);
         }
         return user;
     }
