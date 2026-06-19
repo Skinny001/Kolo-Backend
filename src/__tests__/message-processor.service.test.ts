@@ -1,5 +1,14 @@
 import { MessageProcessor } from '../services/message-processor.service';
 
+// Mock locale.service so tests never depend on i18next initialisation.
+// t() returns "<key>|<serialised-params>" making assertions precise and language-agnostic.
+jest.mock('../services/locale.service', () => ({
+    t: (key: string, _lang: string, params?: Record<string, string | number>) => {
+        const paramStr = params ? '|' + JSON.stringify(params) : '';
+        return `${key}${paramStr}`;
+    },
+}));
+
 const mockSendMessage = jest.fn().mockResolvedValue(true);
 const mockCheckBalance = jest.fn().mockResolvedValue('100.50');
 const mockSendPayment = jest.fn().mockResolvedValue({ successful: true, hash: 'tx123' });
@@ -45,32 +54,32 @@ describe('MessageProcessor', () => {
     describe('processCommand routing', () => {
         it('should handle BALANCE command', async () => {
             await processor.processCommand('12345', 'BALANCE');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('100.50 XLM'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('balance.success'));
         });
 
         it('should handle PROFILE command', async () => {
             await processor.processCommand('12345', 'PROFILE');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Kolo Profile'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('profile.card'));
         });
 
         it('should handle HISTORY command', async () => {
             await processor.processCommand('12345', 'HISTORY');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('transaction history'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('history.fetching'));
         });
 
         it('should handle HELP command', async () => {
             await processor.processCommand('12345', 'HELP');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Kolo Commands'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('help.text'));
         });
 
         it('should handle SUPPORT command as alias for HELP', async () => {
             await processor.processCommand('12345', 'SUPPORT');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Kolo Commands'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('help.text'));
         });
 
         it('should handle UNKNOWN command', async () => {
             await processor.processCommand('12345', 'INVALID_CMD');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining("didn't understand"));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('unknown.command'));
         });
 
         it('should handle CREATE GROUP command', async () => {
@@ -82,23 +91,23 @@ describe('MessageProcessor', () => {
         it('should handle JOIN GROUP command', async () => {
             await processor.processCommand('12345', 'JOIN GROUP g1');
             expect(mockJoinGroup).toHaveBeenCalledWith('u1', 'g1');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('joined'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('join_group.success'));
         });
 
         it('should handle INVITE MEMBER command', async () => {
             await processor.processCommand('12345', 'INVITE MEMBER @jane');
-            expect(mockSendMessage).toHaveBeenCalledWith('67890', expect.stringContaining('INVITE'));
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Invite sent'));
+            expect(mockSendMessage).toHaveBeenCalledWith('67890', expect.stringContaining('invite_member.notify_recipient'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('invite_member.success'));
         });
 
         it('should handle GROUP STATUS command', async () => {
             await processor.processCommand('12345', 'GROUP STATUS');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Your Groups'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('group_status.header'));
         });
 
         it('should handle whitespace-only input as unknown', async () => {
             await processor.processCommand('12345', '   ');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining("didn't understand"));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('unknown.command'));
         });
     });
 
@@ -116,39 +125,39 @@ describe('MessageProcessor', () => {
 
         it('should show usage when insufficient args', async () => {
             await processor.processCommand('12345', 'SEND 10');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Usage'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.usage'));
             expect(mockSendPayment).not.toHaveBeenCalled();
         });
 
         it('should handle missing sender wallet', async () => {
             mockGetOrCreateUser.mockResolvedValueOnce({
-                id: 'u1', phoneNumber: '12345', stellarWallet: null,
+                id: 'u1', phoneNumber: '12345', stellarWallet: null, language: 'en',
             });
             await processor.processCommand('12345', 'SEND 10 @jane');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('not configured'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.no_wallet'));
             expect(mockSendPayment).not.toHaveBeenCalled();
         });
 
         it('should handle missing recipient wallet', async () => {
             mockResolveUser.mockResolvedValueOnce({
-                id: 'u2', phoneNumber: '67890', stellarWallet: null,
+                id: 'u2', phoneNumber: '67890', stellarWallet: null, language: 'en',
             });
             await processor.processCommand('12345', 'SEND 10 @jane');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Could not find wallet'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.no_recipient'));
             expect(mockSendPayment).not.toHaveBeenCalled();
         });
 
         it('should handle missing recipient entirely', async () => {
             mockResolveUser.mockResolvedValueOnce(null);
             await processor.processCommand('12345', 'SEND 10 @jane');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Could not find wallet'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.no_recipient'));
             expect(mockSendPayment).not.toHaveBeenCalled();
         });
 
         it('should handle send payment failure', async () => {
             mockSendPayment.mockRejectedValueOnce(new Error('Insufficient balance'));
             await processor.processCommand('12345', 'SEND 10 @jane');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Failed'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('send.failed'));
         });
     });
 
@@ -161,40 +170,40 @@ describe('MessageProcessor', () => {
 
         it('should show usage when insufficient args', async () => {
             await processor.processCommand('12345', 'CONTRIBUTE');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Usage'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.usage'));
             expect(mockAddContribution).not.toHaveBeenCalled();
         });
 
         it('should handle missing group membership', async () => {
             mockGetGroupStatus.mockResolvedValueOnce([]);
             await processor.processCommand('12345', 'CONTRIBUTE 50');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('not part of any group'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('contribute.no_group'));
             expect(mockAddContribution).not.toHaveBeenCalled();
         });
 
         it('should handle contribution failure', async () => {
             mockAddContribution.mockRejectedValueOnce(new Error('Group not found'));
             await processor.processCommand('12345', 'CONTRIBUTE 50');
-            expect(mockSendMessage).toHaveBeenLastCalledWith('12345', expect.stringContaining('failed'));
+            expect(mockSendMessage).toHaveBeenLastCalledWith('12345', expect.stringContaining('contribute.failed'));
         });
     });
 
     describe('handleRequest', () => {
         it('should send request to recipient and confirmation to sender', async () => {
             await processor.processCommand('12345', 'REQUEST 25 @jane');
-            expect(mockSendMessage).toHaveBeenCalledWith('67890', expect.stringContaining('REQUEST'));
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('sent to'));
+            expect(mockSendMessage).toHaveBeenCalledWith('67890', expect.stringContaining('request.notify_recipient'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('request.confirmation'));
         });
 
         it('should show usage when insufficient args', async () => {
             await processor.processCommand('12345', 'REQUEST 25');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Usage'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('request.usage'));
         });
 
         it('should handle missing recipient', async () => {
             mockResolveUser.mockResolvedValueOnce(null);
             await processor.processCommand('12345', 'REQUEST 25 @ghost');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Could not find user'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('request.no_user'));
         });
     });
 
@@ -207,13 +216,13 @@ describe('MessageProcessor', () => {
         it('should show usage when insufficient args', async () => {
             await processor.processCommand('12345', 'CREATE GROUP');
             expect(mockCreateGroup).not.toHaveBeenCalled();
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Usage'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('create_group.usage'));
         });
 
         it('should handle group creation failure', async () => {
             mockCreateGroup.mockRejectedValueOnce(new Error('Name taken'));
             await processor.processCommand('12345', 'CREATE GROUP Savings 50 MONTHLY');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Failed'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('create_group.failed'));
         });
     });
 
@@ -226,26 +235,26 @@ describe('MessageProcessor', () => {
         it('should show usage when missing groupId', async () => {
             await processor.processCommand('12345', 'JOIN GROUP');
             expect(mockJoinGroup).not.toHaveBeenCalled();
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Usage'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('join_group.usage'));
         });
     });
 
     describe('handleInviteMember', () => {
         it('should show usage when missing target', async () => {
             await processor.processCommand('12345', 'INVITE MEMBER');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Usage'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('invite_member.usage'));
         });
 
         it('should handle missing recipient', async () => {
             mockResolveUser.mockResolvedValueOnce(null);
             await processor.processCommand('12345', 'INVITE MEMBER @ghost');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Could not find user'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('invite_member.no_user'));
         });
 
         it('should handle user not being a group creator', async () => {
             mockGetGroupStatus.mockResolvedValueOnce([]);
             await processor.processCommand('12345', 'INVITE MEMBER @jane');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('not the creator'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('invite_member.not_creator'));
         });
     });
 
@@ -253,25 +262,25 @@ describe('MessageProcessor', () => {
         it('should handle no groups', async () => {
             mockGetGroupStatus.mockResolvedValueOnce([]);
             await processor.processCommand('12345', 'GROUP STATUS');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('not part of any groups'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('group_status.no_groups'));
         });
     });
 
     describe('handleWithdraw', () => {
         it('should show usage when missing amount', async () => {
             await processor.processCommand('12345', 'WITHDRAW');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Usage'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('withdraw.usage'));
         });
 
         it('should handle no group membership', async () => {
             mockGetGroupStatus.mockResolvedValueOnce([]);
             await processor.processCommand('12345', 'WITHDRAW 100');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('not part of any group'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('withdraw.no_group'));
         });
 
         it('should confirm withdrawal', async () => {
             await processor.processCommand('12345', 'WITHDRAW 100');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('withdrew'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('withdraw.success'));
         });
     });
 
@@ -279,17 +288,17 @@ describe('MessageProcessor', () => {
         it('should catch and report errors from handlers', async () => {
             mockGetOrCreateUser.mockRejectedValueOnce(new Error('DB connection failed'));
             await processor.processCommand('12345', 'BALANCE');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('An error occurred'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('error.generic'));
         });
     });
 
     describe('handleBalance edge cases', () => {
         it('should handle missing wallet', async () => {
             mockGetOrCreateUser.mockResolvedValueOnce({
-                id: 'u1', phoneNumber: '12345', stellarWallet: null,
+                id: 'u1', phoneNumber: '12345', stellarWallet: null, language: 'en',
             });
             await processor.processCommand('12345', 'BALANCE');
-            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('not configured'));
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('balance.no_wallet'));
         });
     });
 

@@ -1,0 +1,69 @@
+{
+  "balance": {
+    "no_wallet": "[SOLDE] Erreur : Portefeuille non configuré.",
+    "success": "[SOLDE] Votre solde est de {{balance}} XLM."
+  },
+  "history": {
+    "fetching": "[HISTORIQUE] Récupération de l'historique des transactions pour {{phone}}..."
+  },
+  "profile": {
+    "card": "*Profil Kolo*\nTéléphone : {{phone}}\nNom d'utilisateur : {{username}}\nPortefeuille : {{wallet}}\nInscrit le : {{joined}}"
+  },
+  "send": {
+    "usage": "Utilisation : SEND <montant> <@utilisateur ou téléphone>",
+    "no_wallet": "Erreur : Votre portefeuille n'est pas configuré.",
+    "no_recipient": "Erreur : Impossible de trouver le portefeuille de {{target}}.",
+    "initiating": "[ENVOI] Initiation du transfert de {{amount}} XLM à {{target}}...",
+    "success": "✅ {{amount}} XLM envoyés avec succès à {{target}} !",
+    "failed": "❌ [ENVOI] Échec : {{message}}"
+  },
+  "request": {
+    "usage": "Utilisation : REQUEST <montant> <@utilisateur ou téléphone>",
+    "no_user": "Erreur : Impossible de trouver l'utilisateur {{target}}.",
+    "notify_recipient": "🔔 [DEMANDE] {{sender}} vous demande {{amount}} XLM. Répondez avec : SEND {{amount}} {{senderPhone}}",
+    "confirmation": "[DEMANDE] Demande de {{amount}} XLM envoyée à {{target}}."
+  },
+  "create_group": {
+    "usage": "Utilisation : CREATE GROUP <nom> <montant> <fréquence>",
+    "success": "✅ Groupe \"{{name}}\" créé !\nID du groupe : {{id}}",
+    "failed": "❌ Échec de la création du groupe : {{message}}"
+  },
+  "join_group": {
+    "usage": "Utilisation : JOIN GROUP <groupId>",
+    "success": "✅ Groupe rejoint avec succès !",
+    "failed": "❌ Échec pour rejoindre le groupe : {{message}}"
+  },
+  "invite_member": {
+    "usage": "Utilisation : INVITE MEMBER <@utilisateur ou téléphone>",
+    "no_user": "Erreur : Impossible de trouver l'utilisateur {{target}}.",
+    "not_creator": "Erreur : Vous n'êtes pas le créateur d'un groupe.",
+    "notify_recipient": "🔔 [INVITATION] {{sender}} vous invite à rejoindre le groupe \"{{groupName}}\".\n\nRépondez avec : JOIN GROUP {{groupId}}",
+    "success": "✅ Invitation envoyée à {{target}}."
+  },
+  "group_status": {
+    "no_groups": "Vous ne faites partie d'aucun groupe.",
+    "header": "*Vos Groupes :*\n\n",
+    "entry": "*{{name}}*\nObjectif : {{amount}} XLM ({{frequency}})\nRôle : {{role}}\nMembres : {{count}}\n\n"
+  },
+  "contribute": {
+    "usage": "Utilisation : CONTRIBUTE <montant>",
+    "no_group": "Erreur : Vous ne faites partie d'aucun groupe.",
+    "initiating": "[COTISATION] Initiation de la cotisation de {{amount}} XLM pour \"{{groupName}}\"...",
+    "success": "✅ {{amount}} XLM cotisés avec succès dans \"{{groupName}}\" !",
+    "failed": "❌ Échec de la cotisation : {{message}}"
+  },
+  "withdraw": {
+    "usage": "Utilisation : WITHDRAW <montant>",
+    "no_group": "Erreur : Vous ne faites partie d'aucun groupe.",
+    "success": "✅ {{amount}} XLM retirés avec succès du pool \"{{groupName}}\" ! (SIMULÉ)"
+  },
+  "help": {
+    "text": "*Commandes Kolo :*\n\n_Compte_\nBALANCE\nHISTORY\nPROFILE\n\n_Paiements_\nSEND <montant> <@utilisateur>\nREQUEST <montant> <@utilisateur>\n\n_Groupes d'épargne_\nCREATE GROUP <nom> <montant> <fréquence>\nJOIN GROUP <groupId>\nINVITE MEMBER <@utilisateur>\nGROUP STATUS\nCONTRIBUTE <montant>\nWITHDRAW <montant>\n\n_Assistance_\nHELP\nSUPPORT"
+  },
+  "unknown": {
+    "command": "Je n'ai pas compris cette commande. Envoyez HELP pour voir les commandes disponibles."
+  },
+  "error": {
+    "generic": "Une erreur s'est produite : {{message}}"
+  }
+}

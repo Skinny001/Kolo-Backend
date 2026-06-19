@@ -27,7 +27,8 @@ export class UserService {
             user = await prisma.user.create({
                 data: {
                     phoneNumber,
-                    stellarWallet: walletData
+                    stellarWallet: walletData,
+                    language: 'en',
                 }
             });
         }
