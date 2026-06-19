@@ -2,6 +2,7 @@ import { WhatsAppService } from './whatsapp.service';
 import { StellarService } from './stellar.service';
 import { UserService } from './user.service';
 import { GroupService } from './group.service';
+import { decrypt } from '../utils/encryption.util';
 
 export class MessageProcessor {
     private whatsappService: WhatsAppService;
@@ -75,7 +76,7 @@ export class MessageProcessor {
         if (!user.stellarWallet) {
             return await this.whatsappService.sendMessage(from, `[BALANCE] Error: Wallet not configured.`);
         }
-        const publicKey = user.stellarWallet.split(':')[0];
+        const { publicKey } = JSON.parse(user.stellarWallet);
         const balance = await this.stellarService.checkBalance(publicKey);
         await this.whatsappService.sendMessage(from, `[BALANCE] Your balance is ${balance} XLM.`);
     }
@@ -86,7 +87,7 @@ export class MessageProcessor {
 
     private async handleProfile(from: string) {
         const user = await this.userService.getOrCreateUser(from);
-        const publicKey = user.stellarWallet ? user.stellarWallet.split(':')[0] : 'None';
+        const publicKey = user.stellarWallet ? JSON.parse(user.stellarWallet).publicKey : 'None';
         const profileInfo = `*Kolo Profile*\n` +
             `Phone: ${user.phoneNumber}\n` +
             `Username: ${user.username || 'Not set'}\n` +
@@ -115,8 +116,9 @@ export class MessageProcessor {
             return await this.whatsappService.sendMessage(from, `Error: Could not find wallet for user ${target}.`);
         }
 
-        const senderSecret = sender.stellarWallet.split(':')[1];
-        const recipientPublicKey = recipient.stellarWallet.split(':')[0];
+        const senderWallet = JSON.parse(sender.stellarWallet);
+        const senderSecret = decrypt(senderWallet.encryptedSecret, senderWallet.iv, senderWallet.authTag);
+        const recipientPublicKey = JSON.parse(recipient.stellarWallet).publicKey;
 
         try {
             await this.whatsappService.sendMessage(from, `[SEND] Initiating transfer of ${amount} XLM to ${target}...`);
