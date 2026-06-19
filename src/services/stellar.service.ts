@@ -1,5 +1,6 @@
 import * as StellarSdk from '@stellar/stellar-sdk';
 import { config } from '../config/env';
+import { encrypt } from '../utils/encryption.util';
 
 export class StellarService {
     private server: StellarSdk.Horizon.Server;
@@ -14,23 +15,24 @@ export class StellarService {
 
     public generateWallet() {
         const pair = StellarSdk.Keypair.random();
+        const { encryptedText, iv, authTag } = encrypt(pair.secret());
         return {
             publicKey: pair.publicKey(),
-            secret: pair.secret(),
+            encryptedSecret: encryptedText,
+            iv,
+            authTag,
         };
     }
 
     public async fundTestnetAccount(publicKey: string): Promise<void> {
-        if (config.STELLAR_NETWORK === 'TESTNET') {
-            try {
-                // Using axios for friendbot request since node-fetch is not installed
-                const axios = require('axios');
-                await axios.get(`https://friendbot.stellar.org?addr=${encodeURIComponent(publicKey)}`);
-                console.log(`Friendbot successfully funded ${publicKey}`);
-            } catch (e) {
-                console.error("Friendbot funding failed:", e);
-            }
+        if (config.STELLAR_NETWORK !== 'TESTNET') return;
+
+        const axios = require('axios');
+        const response = await axios.get(`https://friendbot.stellar.org?addr=${encodeURIComponent(publicKey)}`);
+        if (response.status !== 200) {
+            throw new Error(`Friendbot funding failed with status ${response.status}`);
         }
+        console.log(`Friendbot successfully funded ${publicKey}`);
     }
 
     public async checkBalance(publicKey: string): Promise<string> {

@@ -2,7 +2,7 @@ import { WhatsAppService } from './whatsapp.service';
 import { StellarService } from './stellar.service';
 import { UserService } from './user.service';
 import { GroupService } from './group.service';
-import { t } from './locale.service';
+import { decrypt } from '../utils/encryption.util';
 
 export class MessageProcessor {
     private whatsappService: WhatsAppService;
@@ -20,6 +20,10 @@ export class MessageProcessor {
         this.stellarService = stellarService ?? new StellarService();
         this.userService = userService ?? new UserService();
         this.groupService = groupService ?? new GroupService();
+    }
+
+    private isValidAmount(amountStr: string): boolean {
+        return /^\d+(\.\d+)?$/.test(amountStr);
     }
 
     public async processCommand(from: string, text: string) {
@@ -78,7 +82,7 @@ export class MessageProcessor {
         if (!user.stellarWallet) {
             return await this.whatsappService.sendMessage(from, t('balance.no_wallet', lang));
         }
-        const publicKey = user.stellarWallet.split(':')[0];
+        const { publicKey } = JSON.parse(user.stellarWallet);
         const balance = await this.stellarService.checkBalance(publicKey);
         await this.whatsappService.sendMessage(from, t('balance.success', lang, { balance }));
     }
@@ -93,17 +97,13 @@ export class MessageProcessor {
 
     private async handleProfile(from: string) {
         const user = await this.userService.getOrCreateUser(from);
-        const lang = user.language;
-        const publicKey = user.stellarWallet ? user.stellarWallet.split(':')[0] : 'None';
-        await this.whatsappService.sendMessage(
-            from,
-            t('profile.card', lang, {
-                phone: user.phoneNumber,
-                username: user.username || 'Not set',
-                wallet: publicKey,
-                joined: user.createdAt.toDateString(),
-            }),
-        );
+        const publicKey = user.stellarWallet ? JSON.parse(user.stellarWallet).publicKey : 'None';
+        const profileInfo = `*Kolo Profile*\n` +
+            `Phone: ${user.phoneNumber}\n` +
+            `Username: ${user.username || 'Not set'}\n` +
+            `Wallet: ${publicKey}\n` +
+            `Joined: ${user.createdAt.toDateString()}`;
+        await this.whatsappService.sendMessage(from, profileInfo);
     }
 
     private async handleSend(from: string, args: string[]) {
@@ -114,6 +114,9 @@ export class MessageProcessor {
             return await this.whatsappService.sendMessage(from, t('send.usage', lang));
         }
         const amount = args[0];
+        if (!this.isValidAmount(amount)) {
+            return await this.whatsappService.sendMessage(from, 'Error: Invalid amount format.');
+        }
         const target = args[1];
 
         if (!user.stellarWallet) {
@@ -128,8 +131,9 @@ export class MessageProcessor {
             );
         }
 
-        const senderSecret = user.stellarWallet.split(':')[1];
-        const recipientPublicKey = recipient.stellarWallet.split(':')[0];
+        const senderWallet = JSON.parse(sender.stellarWallet);
+        const senderSecret = decrypt(senderWallet.encryptedSecret, senderWallet.iv, senderWallet.authTag);
+        const recipientPublicKey = JSON.parse(recipient.stellarWallet).publicKey;
 
         try {
             await this.whatsappService.sendMessage(
@@ -158,6 +162,9 @@ export class MessageProcessor {
             return await this.whatsappService.sendMessage(from, t('request.usage', lang));
         }
         const amount = args[0];
+        if (!this.isValidAmount(amount)) {
+            return await this.whatsappService.sendMessage(from, 'Error: Invalid amount format.');
+        }
         const target = args[1];
 
         const recipient = await this.userService.resolveUser(target);
@@ -192,8 +199,11 @@ export class MessageProcessor {
         }
         const frequency = args.pop() || 'MONTHLY';
         const amountStr = args.pop() || '0';
+        if (!this.isValidAmount(amountStr)) {
+            return await this.whatsappService.sendMessage(from, 'Error: Invalid amount format.');
+        }
         const name = args.join(' ');
-        const amount = parseFloat(amountStr);
+        const amount = amountStr;
 
         try {
             const group = await this.groupService.createGroup(user.id, name, amount, frequency);
@@ -305,7 +315,11 @@ export class MessageProcessor {
             return await this.whatsappService.sendMessage(from, t('contribute.usage', lang));
         }
         const amountStr = args[0];
-        const amount = parseFloat(amountStr);
+        if (!this.isValidAmount(amountStr)) {
+            return await this.whatsappService.sendMessage(from, 'Error: Invalid amount format.');
+        }
+        const amount = amountStr;
+        const user = await this.userService.getOrCreateUser(from);
 
         const memberships = await this.groupService.getGroupStatus(user.id);
         if (memberships.length === 0) {
@@ -340,7 +354,12 @@ export class MessageProcessor {
         if (args.length < 1) {
             return await this.whatsappService.sendMessage(from, t('withdraw.usage', lang));
         }
-        const amount = parseFloat(args[0]);
+        const amountStr = args[0];
+        if (!this.isValidAmount(amountStr)) {
+            return await this.whatsappService.sendMessage(from, 'Error: Invalid amount format.');
+        }
+        const amount = amountStr;
+        const user = await this.userService.getOrCreateUser(from);
 
         const memberships = await this.groupService.getGroupStatus(user.id);
         if (memberships.length === 0) {

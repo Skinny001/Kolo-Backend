@@ -1,5 +1,7 @@
 import { StellarService } from '../services/stellar.service';
 import * as StellarSdk from '@stellar/stellar-sdk';
+import { config } from '../config/env';
+import { decrypt } from '../utils/encryption.util';
 
 jest.mock('@stellar/stellar-sdk', () => {
     const originalModule = jest.requireActual('@stellar/stellar-sdk');
@@ -43,11 +45,20 @@ jest.mock('@stellar/stellar-sdk', () => {
 });
 
 jest.mock('axios', () => ({
-    get: jest.fn().mockResolvedValue({ data: { successful: true } })
+    get: jest.fn().mockResolvedValue({ status: 200, data: { successful: true } })
 }));
 
 describe('StellarService', () => {
     let stellarService: StellarService;
+    const originalKey = config.ENCRYPTION_KEY;
+
+    beforeAll(() => {
+        config.ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+    });
+
+    afterAll(() => {
+        config.ENCRYPTION_KEY = originalKey;
+    });
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -55,10 +66,15 @@ describe('StellarService', () => {
     });
 
     describe('generateWallet', () => {
-        it('should return a generated keypair', () => {
+        it('should return a generated keypair with encrypted secret', () => {
             const wallet = stellarService.generateWallet();
             expect(wallet.publicKey).toBe('G_MOCK_PUBLIC_KEY');
-            expect(wallet.secret).toBe('S_MOCK_SECRET_KEY');
+            expect(wallet.encryptedSecret).toBeDefined();
+            expect(wallet.iv).toBeDefined();
+            expect(wallet.authTag).toBeDefined();
+            
+            const decrypted = decrypt(wallet.encryptedSecret, wallet.iv, wallet.authTag);
+            expect(decrypted).toBe('S_MOCK_SECRET_KEY');
         });
     });
 
@@ -67,6 +83,12 @@ describe('StellarService', () => {
             const axios = require('axios');
             await stellarService.fundTestnetAccount('G_MOCK');
             expect(axios.get).toHaveBeenCalledWith('https://friendbot.stellar.org?addr=G_MOCK');
+        });
+
+        it('should throw on non-200 response', async () => {
+            const axios = require('axios');
+            axios.get.mockResolvedValueOnce({ status: 500 });
+            await expect(stellarService.fundTestnetAccount('G_MOCK')).rejects.toThrow('Friendbot funding failed');
         });
     });
 
