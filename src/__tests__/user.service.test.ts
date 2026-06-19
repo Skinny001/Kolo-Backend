@@ -62,7 +62,8 @@ describe('UserService', () => {
             expect(prismaClientMock.user.create).toHaveBeenCalledWith({
                 data: {
                     phoneNumber: '0987654321',
-                    stellarWallet: 'G_MOCK_PUBLIC_KEY:S_MOCK_SECRET_KEY'
+                    stellarWallet: 'G_MOCK_PUBLIC_KEY:S_MOCK_SECRET_KEY',
+                    language: 'en',
                 }
             });
             expect(result).toEqual(createdUser);

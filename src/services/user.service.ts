@@ -25,7 +25,8 @@ export class UserService {
             user = await prisma.user.create({
                 data: {
                     phoneNumber,
-                    stellarWallet: walletData
+                    stellarWallet: walletData,
+                    language: 'en',
                 }
             });
             console.log(`Created new user for ${phoneNumber} with wallet ${wallet.publicKey}`);

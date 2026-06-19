@@ -2,6 +2,7 @@ import { WhatsAppService } from './whatsapp.service';
 import { StellarService } from './stellar.service';
 import { UserService } from './user.service';
 import { GroupService } from './group.service';
+import { t } from './locale.service';
 
 export class MessageProcessor {
     private whatsappService: WhatsAppService;
@@ -62,228 +63,304 @@ export class MessageProcessor {
             }
         } catch (error: any) {
             console.error('Error processing command:', error);
-            await this.whatsappService.sendMessage(from, `An error occurred: ${error.message}`);
+            const user = await this.userService.getOrCreateUser(from).catch(() => ({ language: 'en' }));
+            await this.whatsappService.sendMessage(
+                from,
+                t('error.generic', user.language, { message: error.message }),
+            );
         }
     }
 
     private async handleBalance(from: string) {
         const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language;
+
         if (!user.stellarWallet) {
-            return await this.whatsappService.sendMessage(from, `[BALANCE] Error: Wallet not configured.`);
+            return await this.whatsappService.sendMessage(from, t('balance.no_wallet', lang));
         }
         const publicKey = user.stellarWallet.split(':')[0];
         const balance = await this.stellarService.checkBalance(publicKey);
-        await this.whatsappService.sendMessage(from, `[BALANCE] Your balance is ${balance} XLM.`);
+        await this.whatsappService.sendMessage(from, t('balance.success', lang, { balance }));
     }
 
     private async handleHistory(from: string) {
-        await this.whatsappService.sendMessage(from, `[HISTORY] Fetching transaction history for ${from}...`);
+        const user = await this.userService.getOrCreateUser(from);
+        await this.whatsappService.sendMessage(
+            from,
+            t('history.fetching', user.language, { phone: from }),
+        );
     }
 
     private async handleProfile(from: string) {
         const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language;
         const publicKey = user.stellarWallet ? user.stellarWallet.split(':')[0] : 'None';
-        const profileInfo = `*Kolo Profile*\n` +
-            `Phone: ${user.phoneNumber}\n` +
-            `Username: ${user.username || 'Not set'}\n` +
-            `Wallet: ${publicKey}\n` +
-            `Joined: ${user.createdAt.toDateString()}`;
-        await this.whatsappService.sendMessage(from, profileInfo);
+        await this.whatsappService.sendMessage(
+            from,
+            t('profile.card', lang, {
+                phone: user.phoneNumber,
+                username: user.username || 'Not set',
+                wallet: publicKey,
+                joined: user.createdAt.toDateString(),
+            }),
+        );
     }
 
     private async handleSend(from: string, args: string[]) {
+        const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language;
+
         if (args.length < 2) {
-            return await this.whatsappService.sendMessage(from, 'Usage: SEND <amount> <@username or phone>');
+            return await this.whatsappService.sendMessage(from, t('send.usage', lang));
         }
         const amount = args[0];
         const target = args[1];
 
-        const sender = await this.userService.getOrCreateUser(from);
-        if (!sender.stellarWallet) {
-            return await this.whatsappService.sendMessage(from, 'Error: Your wallet is not configured.');
+        if (!user.stellarWallet) {
+            return await this.whatsappService.sendMessage(from, t('send.no_wallet', lang));
         }
 
         const recipient = await this.userService.resolveUser(target);
         if (!recipient || !recipient.stellarWallet) {
-            return await this.whatsappService.sendMessage(from, `Error: Could not find wallet for user ${target}.`);
+            return await this.whatsappService.sendMessage(
+                from,
+                t('send.no_recipient', lang, { target }),
+            );
         }
 
-        const senderSecret = sender.stellarWallet.split(':')[1];
+        const senderSecret = user.stellarWallet.split(':')[1];
         const recipientPublicKey = recipient.stellarWallet.split(':')[0];
 
         try {
-            await this.whatsappService.sendMessage(from, `[SEND] Initiating transfer of ${amount} XLM to ${target}...`);
+            await this.whatsappService.sendMessage(
+                from,
+                t('send.initiating', lang, { amount, target }),
+            );
             await this.stellarService.sendPayment(senderSecret, recipientPublicKey, amount);
-            await this.whatsappService.sendMessage(from, `\u2705 Successfully sent ${amount} XLM to ${target}!`);
+            await this.whatsappService.sendMessage(
+                from,
+                t('send.success', lang, { amount, target }),
+            );
         } catch (e: any) {
             console.error(e);
-            await this.whatsappService.sendMessage(from, `\u274c [SEND] Failed: ${e.message || 'Transaction error'}`);
+            await this.whatsappService.sendMessage(
+                from,
+                t('send.failed', lang, { message: e.message || 'Transaction error' }),
+            );
         }
     }
 
     private async handleRequest(from: string, args: string[]) {
+        const sender = await this.userService.getOrCreateUser(from);
+        const lang = sender.language;
+
         if (args.length < 2) {
-            return await this.whatsappService.sendMessage(from, 'Usage: REQUEST <amount> <@username or phone>');
+            return await this.whatsappService.sendMessage(from, t('request.usage', lang));
         }
         const amount = args[0];
         const target = args[1];
 
-        const sender = await this.userService.getOrCreateUser(from);
         const recipient = await this.userService.resolveUser(target);
-
         if (!recipient) {
-            return await this.whatsappService.sendMessage(from, `Error: Could not find user ${target}.`);
+            return await this.whatsappService.sendMessage(
+                from,
+                t('request.no_user', lang, { target }),
+            );
         }
 
         const senderHandle = sender.username ? '@' + sender.username : sender.phoneNumber;
-        await this.whatsappService.sendMessage(recipient.phoneNumber, `\ud83d\udd14 [REQUEST] ${senderHandle} is requesting ${amount} XLM from you. Reply with: SEND ${amount} ${sender.phoneNumber}`);
-        await this.whatsappService.sendMessage(from, `[REQUEST] Request for ${amount} XLM sent to ${target}.`);
+        await this.whatsappService.sendMessage(
+            recipient.phoneNumber,
+            t('request.notify_recipient', lang, {
+                sender: senderHandle,
+                amount,
+                senderPhone: sender.phoneNumber,
+            }),
+        );
+        await this.whatsappService.sendMessage(
+            from,
+            t('request.confirmation', lang, { amount, target }),
+        );
     }
 
     private async handleCreateGroup(from: string, args: string[]) {
+        const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language;
+
         if (args.length < 3) {
-            return await this.whatsappService.sendMessage(from, 'Usage: CREATE GROUP <name> <amount> <frequency>');
+            return await this.whatsappService.sendMessage(from, t('create_group.usage', lang));
         }
         const frequency = args.pop() || 'MONTHLY';
         const amountStr = args.pop() || '0';
         const name = args.join(' ');
         const amount = parseFloat(amountStr);
 
-        const user = await this.userService.getOrCreateUser(from);
-
         try {
             const group = await this.groupService.createGroup(user.id, name, amount, frequency);
-            await this.whatsappService.sendMessage(from, `\u2705 Group "${name}" created!\nGroup ID: ${group.id}`);
+            await this.whatsappService.sendMessage(
+                from,
+                t('create_group.success', lang, { name, id: group.id }),
+            );
         } catch (e: any) {
-            await this.whatsappService.sendMessage(from, `\u274c Failed to create group: ${e.message}`);
+            await this.whatsappService.sendMessage(
+                from,
+                t('create_group.failed', lang, { message: e.message }),
+            );
         }
     }
 
     private async handleJoinGroup(from: string, args: string[]) {
+        const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language;
+
         if (args.length < 1) {
-            return await this.whatsappService.sendMessage(from, 'Usage: JOIN GROUP <groupId>');
+            return await this.whatsappService.sendMessage(from, t('join_group.usage', lang));
         }
         const groupId = args[0];
-        const user = await this.userService.getOrCreateUser(from);
 
         try {
             await this.groupService.joinGroup(user.id, groupId);
-            await this.whatsappService.sendMessage(from, `\u2705 Successfully joined group!`);
+            await this.whatsappService.sendMessage(from, t('join_group.success', lang));
         } catch (e: any) {
-            await this.whatsappService.sendMessage(from, `\u274c Failed to join group: ${e.message}`);
+            await this.whatsappService.sendMessage(
+                from,
+                t('join_group.failed', lang, { message: e.message }),
+            );
         }
     }
 
     private async handleInviteMember(from: string, args: string[]) {
+        const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language;
+
         if (args.length < 1) {
-            return await this.whatsappService.sendMessage(from, 'Usage: INVITE MEMBER <@username or phone>');
+            return await this.whatsappService.sendMessage(from, t('invite_member.usage', lang));
         }
         const target = args[0];
-        const user = await this.userService.getOrCreateUser(from);
         const recipient = await this.userService.resolveUser(target);
 
         if (!recipient) {
-            return await this.whatsappService.sendMessage(from, `Error: Could not find user ${target}.`);
+            return await this.whatsappService.sendMessage(
+                from,
+                t('invite_member.no_user', lang, { target }),
+            );
         }
 
         const memberships = await this.groupService.getGroupStatus(user.id);
         const adminGroup = memberships.find((m: any) => m.role === 'CREATOR');
 
         if (!adminGroup) {
-            return await this.whatsappService.sendMessage(from, 'Error: You are not the creator of any group.');
+            return await this.whatsappService.sendMessage(
+                from,
+                t('invite_member.not_creator', lang),
+            );
         }
 
         const senderHandle = user.username ? '@' + user.username : user.phoneNumber;
-        await this.whatsappService.sendMessage(recipient.phoneNumber, `\ud83d\udd14 [INVITE] ${senderHandle} invited you to join their savings group "${adminGroup.group.name}".\n\nReply with: JOIN GROUP ${adminGroup.groupId}`);
-        await this.whatsappService.sendMessage(from, `\u2705 Invite sent to ${target}.`);
+        await this.whatsappService.sendMessage(
+            recipient.phoneNumber,
+            t('invite_member.notify_recipient', lang, {
+                sender: senderHandle,
+                groupName: adminGroup.group.name,
+                groupId: adminGroup.groupId,
+            }),
+        );
+        await this.whatsappService.sendMessage(
+            from,
+            t('invite_member.success', lang, { target }),
+        );
     }
 
-    private async handleGroupStatus(from: string, args: string[]) {
+    private async handleGroupStatus(from: string, _args: string[]) {
         const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language;
         const memberships = await this.groupService.getGroupStatus(user.id);
 
         if (memberships.length === 0) {
-            return await this.whatsappService.sendMessage(from, 'You are not part of any groups.');
+            return await this.whatsappService.sendMessage(
+                from,
+                t('group_status.no_groups', lang),
+            );
         }
 
-        let statusText = '*Your Groups:*\n\n';
+        let statusText = t('group_status.header', lang);
         memberships.forEach((m: any) => {
-            statusText += `*${m.group.name}*\n`;
-            statusText += `Target: ${m.group.contributionAmount} XLM (${m.group.contributionFrequency})\n`;
-            statusText += `Role: ${m.role}\n`;
-            statusText += `Members: ${m.group.members.length}\n\n`;
+            statusText += t('group_status.entry', lang, {
+                name: m.group.name,
+                amount: m.group.contributionAmount,
+                frequency: m.group.contributionFrequency,
+                role: m.role,
+                count: m.group.members.length,
+            });
         });
 
         await this.whatsappService.sendMessage(from, statusText.trim());
     }
 
     private async handleContribute(from: string, args: string[]) {
+        const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language;
+
         if (args.length < 1) {
-            return await this.whatsappService.sendMessage(from, 'Usage: CONTRIBUTE <amount>');
+            return await this.whatsappService.sendMessage(from, t('contribute.usage', lang));
         }
         const amountStr = args[0];
         const amount = parseFloat(amountStr);
-        const user = await this.userService.getOrCreateUser(from);
 
         const memberships = await this.groupService.getGroupStatus(user.id);
         if (memberships.length === 0) {
-            return await this.whatsappService.sendMessage(from, 'Error: You are not part of any group.');
+            return await this.whatsappService.sendMessage(from, t('contribute.no_group', lang));
         }
 
         const group = memberships[0].group;
 
         try {
-            await this.whatsappService.sendMessage(from, `[CONTRIBUTE] Initiating contribution of ${amount} XLM to "${group.name}"...`);
-
+            await this.whatsappService.sendMessage(
+                from,
+                t('contribute.initiating', lang, { amount, groupName: group.name }),
+            );
             const txHash = 'mock_tx_' + Date.now();
             await this.groupService.addContribution(user.id, group.id, amount, txHash);
-
-            await this.whatsappService.sendMessage(from, `\u2705 Successfully contributed ${amount} XLM to "${group.name}"!`);
+            await this.whatsappService.sendMessage(
+                from,
+                t('contribute.success', lang, { amount, groupName: group.name }),
+            );
         } catch (e: any) {
-            await this.whatsappService.sendMessage(from, `\u274c Contribution failed: ${e.message}`);
+            await this.whatsappService.sendMessage(
+                from,
+                t('contribute.failed', lang, { message: e.message }),
+            );
         }
     }
 
     private async handleWithdraw(from: string, args: string[]) {
+        const user = await this.userService.getOrCreateUser(from);
+        const lang = user.language;
+
         if (args.length < 1) {
-            return await this.whatsappService.sendMessage(from, 'Usage: WITHDRAW <amount>');
+            return await this.whatsappService.sendMessage(from, t('withdraw.usage', lang));
         }
         const amount = parseFloat(args[0]);
-        const user = await this.userService.getOrCreateUser(from);
 
         const memberships = await this.groupService.getGroupStatus(user.id);
         if (memberships.length === 0) {
-            return await this.whatsappService.sendMessage(from, 'Error: You are not part of any group.');
+            return await this.whatsappService.sendMessage(from, t('withdraw.no_group', lang));
         }
 
         const group = memberships[0].group;
-
-        await this.whatsappService.sendMessage(from, `\u2705 Successfully withdrew ${amount} XLM from "${group.name}" pool! (MOCKED)`);
+        await this.whatsappService.sendMessage(
+            from,
+            t('withdraw.success', lang, { amount, groupName: group.name }),
+        );
     }
 
     private async handleHelp(from: string) {
-        const helpText = `*Kolo Commands:*\n\n` +
-            `_Account_\n` +
-            `BALANCE\n` +
-            `HISTORY\n` +
-            `PROFILE\n\n` +
-            `_Payments_\n` +
-            `SEND <amount> <@user>\n` +
-            `REQUEST <amount> <@user>\n\n` +
-            `_Savings Groups_\n` +
-            `CREATE GROUP <name> <amount> <frequency>\n` +
-            `JOIN GROUP <groupId>\n` +
-            `INVITE MEMBER <@user>\n` +
-            `GROUP STATUS\n` +
-            `CONTRIBUTE <amount>\n` +
-            `WITHDRAW <amount>\n\n` +
-            `_Support_\n` +
-            `HELP\n` +
-            `SUPPORT`;
-        await this.whatsappService.sendMessage(from, helpText);
+        const user = await this.userService.getOrCreateUser(from);
+        await this.whatsappService.sendMessage(from, t('help.text', user.language));
     }
 
-    private async handleUnknown(from: string, text: string) {
-        await this.whatsappService.sendMessage(from, `I didn't understand that command. Send HELP to see available commands.`);
+    private async handleUnknown(from: string, _text: string) {
+        const user = await this.userService.getOrCreateUser(from);
+        await this.whatsappService.sendMessage(from, t('unknown.command', user.language));
     }
 }
