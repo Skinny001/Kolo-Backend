@@ -1,0 +1,69 @@
+{
+  "balance": {
+    "no_wallet": "[IWO OWO] Aṣiṣe: Apamọwọ ko ti ṣeto.",
+    "success": "[IWO OWO] Iye owó rẹ jẹ {{balance}} XLM."
+  },
+  "history": {
+    "fetching": "[ITAN] Nfetí itan ìṣòwò fún {{phone}}..."
+  },
+  "profile": {
+    "card": "*Profaili Kolo*\nFóònù: {{phone}}\nOrúkọ olùmúlò: {{username}}\nApamọwọ: {{wallet}}\nỌjọ́ ìdásílẹ̀: {{joined}}"
+  },
+  "send": {
+    "usage": "Lílo: SEND <iye> <@olùmúlò tabi fóònù>",
+    "no_wallet": "Aṣiṣe: Apamọwọ rẹ ko ti ṣeto.",
+    "no_recipient": "Aṣiṣe: Ko lè rí apamọwọ fún olùmúlò {{target}}.",
+    "initiating": "[FIRANṢẸ] Nfilọ ìgbéwọlé {{amount}} XLM sí {{target}}...",
+    "success": "✅ Aṣeyọrí! Firánṣẹ {{amount}} XLM sí {{target}}!",
+    "failed": "❌ [FIRANṢẸ] Kùnà: {{message}}"
+  },
+  "request": {
+    "usage": "Lílo: REQUEST <iye> <@olùmúlò tabi fóònù>",
+    "no_user": "Aṣiṣe: Ko lè rí olùmúlò {{target}}.",
+    "notify_recipient": "🔔 [ÌBÉÈRÈ] {{sender}} ń béèrè {{amount}} XLM lọ́wọ́ rẹ. Dáhùn pẹ̀lú: SEND {{amount}} {{senderPhone}}",
+    "confirmation": "[ÌBÉÈRÈ] Ìbéèrè fún {{amount}} XLM fi ránṣẹ́ sí {{target}}."
+  },
+  "create_group": {
+    "usage": "Lílo: CREATE GROUP <orúkọ> <iye> <ìgbà>",
+    "success": "✅ Ẹgbẹ́ \"{{name}}\" ti ṣẹda!\nID Ẹgbẹ́: {{id}}",
+    "failed": "❌ Kùnà láti ṣẹda ẹgbẹ́: {{message}}"
+  },
+  "join_group": {
+    "usage": "Lílo: JOIN GROUP <groupId>",
+    "success": "✅ Ó dára! O ti darapọ̀ mọ́ ẹgbẹ́!",
+    "failed": "❌ Kùnà láti darapọ̀ mọ́ ẹgbẹ́: {{message}}"
+  },
+  "invite_member": {
+    "usage": "Lílo: INVITE MEMBER <@olùmúlò tabi fóònù>",
+    "no_user": "Aṣiṣe: Ko lè rí olùmúlò {{target}}.",
+    "not_creator": "Aṣiṣe: Ìwọ kò ṣẹda ẹgbẹ́ kankan.",
+    "notify_recipient": "🔔 [ÌPÈ] {{sender}} pè ọ láti darapọ̀ mọ́ ẹgbẹ́ \"{{groupName}}\".\n\nDáhùn pẹ̀lú: JOIN GROUP {{groupId}}",
+    "success": "✅ Ìpè fi ránṣẹ́ sí {{target}}."
+  },
+  "group_status": {
+    "no_groups": "Ìwọ kò jẹ́ apá ẹgbẹ́ kankan.",
+    "header": "*Àwọn Ẹgbẹ́ Rẹ:*\n\n",
+    "entry": "*{{name}}*\nÀfojúsùn: {{amount}} XLM ({{frequency}})\nÌpò: {{role}}\nÀwọn Ọmọ Ẹgbẹ́: {{count}}\n\n"
+  },
+  "contribute": {
+    "usage": "Lílo: CONTRIBUTE <iye>",
+    "no_group": "Aṣiṣe: Ìwọ kò jẹ́ apá ẹgbẹ́ kankan.",
+    "initiating": "[ÌLỌSIWÁJÚ] Nfilọ ìdásọwọ {{amount}} XLM sí \"{{groupName}}\"...",
+    "success": "✅ Ìdásọwọ {{amount}} XLM sí \"{{groupName}}\" ti ṣeyọrí!",
+    "failed": "❌ Ìdásọwọ kùnà: {{message}}"
+  },
+  "withdraw": {
+    "usage": "Lílo: WITHDRAW <iye>",
+    "no_group": "Aṣiṣe: Ìwọ kò jẹ́ apá ẹgbẹ́ kankan.",
+    "success": "✅ Yíyọ {{amount}} XLM kúrò nínú \"{{groupName}}\" ti ṣeyọrí! (ADANWÒ)"
+  },
+  "help": {
+    "text": "*Àwọn Àṣẹ Kolo:*\n\n_Àkọọlẹ_\nBALANCE\nHISTORY\nPROFILE\n\n_Àwọn Ìsanwó_\nSEND <iye> <@olùmúlò>\nREQUEST <iye> <@olùmúlò>\n\n_Àwọn Ẹgbẹ́ Ìfowópamọ́_\nCREATE GROUP <orúkọ> <iye> <ìgbà>\nJOIN GROUP <groupId>\nINVITE MEMBER <@olùmúlò>\nGROUP STATUS\nCONTRIBUTE <iye>\nWITHDRAW <iye>\n\n_Ìrànlọ́wọ́_\nHELP\nSUPPORT"
+  },
+  "unknown": {
+    "command": "미 ko gbọ́ àṣẹ yẹn. Firanṣẹ HELP láti rí àwọn àṣẹ tó wà."
+  },
+  "error": {
+    "generic": "Aṣiṣe ṣẹlẹ: {{message}}"
+  }
+}
